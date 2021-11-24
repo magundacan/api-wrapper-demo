@@ -1,0 +1,5 @@
+<% @repositories.each do |repository| %>
+  <h1><%= repository["full_name"] %></h1>
+<% end %>
+
+<%= @profile["login"] %>
