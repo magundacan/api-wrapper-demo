@@ -1,17 +1,16 @@
-# error handling will be added tomorrow
-
 module GithubApi
   module V3
     class Client
+      include HttpStatusCodes
+      include ApiExceptions
+
+      BASE_URL = "https://api.github.com"
+      ACCESS_TOKEN = ""
+
       def user_repos(username)
         request(
           http_method: :get,
-          endpoint: "/users/#{username}/repos",
-          # params (if endpoint needs it)
-          # not 100% sure if this is how it's done; please try in the console first
-          params: {
-            random_param: 123
-          }
+          endpoint: "/users/#{username}/repos"
         )
       end
 
@@ -22,31 +21,33 @@ module GithubApi
         )
       end
 
-      def new_endpoint
-        request(
-          http_method: :post, 
-          endpoint: "/endpoint"
-        )
-      end
-
       private
 
-      def request(http_method:, endpoint:, params: {})
-        response = connection.public_send(http_method, endpoint, params)
-        JSON.parse(response.body)
+      def request(http_method:, endpoint:, params: nil, headers: nil)
+        @response = connection.public_send(http_method, endpoint, params, headers)        
+        parsed_response = JSON.parse(@response.body)
+        return parsed_response if @response.status == HTTP_OK_CODE
+        raise error_class
       end
 
       def connection
         @connection ||= Faraday.new(
-          url: "https://api.github.com",
+          url: BASE_URL,
           headers: {
-            # you may not need Authorization header depending on your chosen API
-            "Authorization" => "Bearer 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"
+            "Authorization" => "Bearer #{ACCESS_TOKEN}"
           },
-          # params
-          # not 100% sure; please try it in the console first
-          params: {api_key: '123abc'}
         )
+      end
+
+      def error_class
+        case @response.status
+        when HTTP_NOT_FOUND_CODE
+          NotFoundError
+        when HTTP_UNAUTHORIZED_CODE
+          UnauthorizedError
+        else
+          ApiError
+        end
       end
     end
   end
